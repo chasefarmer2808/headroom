@@ -1,3 +1,5 @@
+import pytest
+
 from headroom.builder import PromptBuilder
 
 
@@ -19,3 +21,9 @@ class TestPromptBuilder:
 3
 4
 5""" == pb.build()
+        
+    def test_char_estimate_over_budget(self):
+        pb = PromptBuilder().system("You are a friendly assistant").context("a" * ((1_000 * 4) + 100))
+
+        with pytest.raises(ValueError):
+            pb.build()

@@ -3,6 +3,8 @@ from __future__ import annotations
 from enum import Enum, auto
 from typing import NamedTuple, Protocol, TypedDict, runtime_checkable
 
+from .counter import TokenCounter, CharEstimateCounter
+
 @runtime_checkable
 class Promptable(Protocol):
     def to_prompt(self) -> str:
@@ -29,6 +31,8 @@ class PromptSlots(TypedDict):
 
 class PromptBuilder:
     def __init__(self):
+        self._max_tokens: int = 1_000
+        self._token_counter: TokenCounter = CharEstimateCounter()
         self._slots: PromptSlots = {
             "system": [],
             "instructions": [],
@@ -58,11 +62,16 @@ class PromptBuilder:
         return self
     
     def build(self) -> str:
-        return "\n".join(
+        prompt_str = "\n".join(
             f.content.to_prompt() if isinstance(f.content, Promptable) else f.content
             for slot in self._slots.values()
             for f in slot
         )
+
+        if self._token_counter.count_tokens(prompt_str) > self._max_tokens:
+            raise ValueError("prompt exceeds max token budget")
+
+        return prompt_str
 
 def main():
     builder = PromptBuilder().context("You are a helpful assistant")
