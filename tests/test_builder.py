@@ -23,7 +23,13 @@ class TestPromptBuilder:
 5""" == pb.build()
         
     def test_char_estimate_over_budget(self):
-        pb = PromptBuilder().system("You are a friendly assistant").context("a" * ((1_000 * 4) + 100))
+        pb = PromptBuilder(disable_compaction=True).system("You are a friendly assistant").context("a" * ((1_000 * 4) + 100))
 
         with pytest.raises(ValueError):
             pb.build()
+
+class TestCompaction:
+    def test_drops_least_important_slot(self):
+        pb = PromptBuilder().system("You are a friendly assistant").context("a" * ((1_000 * 4) + 100))
+
+        assert "You are a friendly assistant" == pb.build()
