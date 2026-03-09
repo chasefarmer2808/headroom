@@ -52,8 +52,10 @@ class DropSlotCompactor:
                 # No more frags to drop in the current category.
                 continue
             
-            # Take all but the first from sorted_droppable_frags
-            slots[droppable_slot] = [f for f in frags if f != sorted_droppable_frags[0]]
+            # Take all but the first from sorted_droppable_frags.
+            # Important to check object reference equality in this filter otherwise could accidentily 
+            # delete other frags with the same value.
+            slots[droppable_slot] = [f for f in frags if f is not sorted_droppable_frags[0]]
 
         return slots
 
@@ -100,14 +102,12 @@ class PromptBuilder:
         
         if self._disable_compaction:
             raise ValueError("Prompt exceeds max token budget")
-
+        
         # Apply compaction
-        for compactor in self._compactors:
-            compacted_slots = compactor.compact(self._slots)
-            prompt_str = self._render(compacted_slots)
-
-            if self._token_counter.count_tokens(prompt_str) > self._max_tokens:
-                break
+        while self._token_counter.count_tokens(prompt_str) > self._max_tokens:
+            for compactor in self._compactors:
+                compacted_slots = compactor.compact(self._slots)
+                prompt_str = self._render(compacted_slots)
 
         return prompt_str
 

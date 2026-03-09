@@ -33,3 +33,9 @@ class TestCompaction:
         pb = PromptBuilder().system("You are a friendly assistant").context("a" * ((1_000 * 4) + 100))
 
         assert "You are a friendly assistant" == pb.build()
+    
+    def test_exhaustive_sequential(self):
+        large_context = "a" * ((1_000 * 4) + 100)
+        pb = PromptBuilder().system("You are a friendly assistant").context(large_context).context(large_context)
+
+        assert "You are a friendly assistant" == pb.build()
