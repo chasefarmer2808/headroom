@@ -1,6 +1,6 @@
 import pytest
 
-from headroom.builder import PromptBuilder
+from headroom.builder import DropSlotCompactor, PromptBuilder, TruncateCompactor
 
 
 class TestPromptBuilder:
@@ -34,8 +34,24 @@ class TestCompaction:
 
         assert "You are a friendly assistant" == pb.build()
     
-    def test_exhaustive_sequential(self):
+    def test_exhaustive_compaction(self):
         large_context = "a" * ((1_000 * 4) + 100)
         pb = PromptBuilder().system("You are a friendly assistant").context(large_context).context(large_context)
 
         assert "You are a friendly assistant" == pb.build()
+
+
+    def test_exhaustive_sequential_compaction(self):
+        # pb with truncate compactor and drop frag compactor.
+        # should truncate all of the frags before dropping any.
+        pb = PromptBuilder(
+            max_tokens=20,
+            compactors=(TruncateCompactor(max_chars=5), DropSlotCompactor())
+        ) \
+        .system("You are a friendly assistant") \
+        .context("a" * 40) \
+        .context("a" * 40)
+
+        assert """Yo...
+aa...
+aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa""" == pb.build()
