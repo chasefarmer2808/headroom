@@ -1,10 +1,15 @@
 import pytest
 
-from headroom.builder import DropSlotCompactor, PromptBuilder, TruncateCompactor
+from headroom.builder import DropSlotCompactor, Importance, PromptBuilder, TruncateCompactor
 
 @pytest.mark.parametrize(
     "pb,expected_prompt",
     [
+        pytest.param(
+            PromptBuilder(),
+            "",
+            id="empty_builder"
+        ),
         pytest.param(
             PromptBuilder().context("hello"), 
             "hello",
@@ -23,7 +28,37 @@ from headroom.builder import DropSlotCompactor, PromptBuilder, TruncateCompactor
 4
 5""",
             id="section_ordering"
-        )
+        ),
+        pytest.param(
+            PromptBuilder().user("only user"),
+            "only user",
+            id="user_slot_only",
+        ),
+        pytest.param(
+            PromptBuilder().system("sys only"),
+            "sys only",
+            id="system_slot_only",
+        ),
+        pytest.param(
+            PromptBuilder().context("first").context("second").context("third"),
+            "first\nsecond\nthird",
+            id="multiple_fragments_same_slot",
+        ),
+        pytest.param(
+            PromptBuilder().system("sys").user("usr"),
+            "sys\nusr",
+            id="system_and_user_no_middle_slots",
+        ),
+        pytest.param(
+            PromptBuilder().context("¡Hola! 日本語 🎉"),
+            "¡Hola! 日本語 🎉",
+            id="unicode_content_preserved",
+        ),
+        pytest.param(
+            PromptBuilder().context("line1\nline2\nline3"),
+            "line1\nline2\nline3",
+            id="multiline_fragment_preserved",
+        ),
     ]
 )
 def test_basic(pb: PromptBuilder, expected_prompt: str):
@@ -86,8 +121,17 @@ aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa""",
 def test_compaction(pb: PromptBuilder, expected_prompt: str):
     assert pb.build() == expected_prompt
 
+def test_custom_importance_overrides_default():
+    pb = PromptBuilder(max_tokens=100_000)
+    pb.history("important history", importance=Importance.HIGH)
+    assert pb._slots["history"][0].importance == Importance.HIGH
+
 def test_char_estimate_over_budget():
     pb = PromptBuilder(disable_compaction=True).system("You are a friendly assistant").context("a" * ((1_000 * 4) + 100))
 
     with pytest.raises(ValueError):
         pb.build()
+
+def test_disable_compaction_within_budget_does_not_raise():
+    pb = PromptBuilder(disable_compaction=True).user("short")
+    assert pb.build() == "short"
