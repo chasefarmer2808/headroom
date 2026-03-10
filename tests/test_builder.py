@@ -57,6 +57,18 @@ Please summarize the following""",
             id="drop_context_before_instructions"
         ),
         pytest.param(
+            PromptBuilder(max_tokens=200, compactors=(TruncateCompactor(max_chars=100), DropSlotCompactor()))
+                .system("You are a friendly assistant")
+                .instructions("Summarize the following pages from the book:")
+                .context(f"Page 1: {("a" * 500)}")
+                .context(f"Page 2: {("a" * 500)}"),
+            f"""You are a friendly assistant
+Summarize the following pages from the book:
+Page 1: {("a" * 89)}...
+Page 2: {("a" * 500)}""",
+            id="truncate_first_context"
+        ),
+        pytest.param(
             PromptBuilder(
                 max_tokens=20,
                 compactors=(TruncateCompactor(max_chars=5), DropSlotCompactor())
