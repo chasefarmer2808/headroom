@@ -5,11 +5,12 @@ from headroom.builder import DropSlotCompactor, PromptBuilder, TruncateCompactor
 @pytest.mark.parametrize(
     "pb,expected_prompt",
     [
-        (
+        pytest.param(
             PromptBuilder().context("hello"), 
             "hello",
+            id="hello_context_only",
         ),
-        (
+        pytest.param(
             PromptBuilder()
                 .system("1")
                 .instructions("2")
@@ -20,7 +21,8 @@ from headroom.builder import DropSlotCompactor, PromptBuilder, TruncateCompactor
 2
 3
 4
-5"""
+5""",
+            id="section_ordering"
         )
     ]
 )
@@ -30,20 +32,31 @@ def test_basic(pb: PromptBuilder, expected_prompt: str):
 @pytest.mark.parametrize(
     "pb,expected_prompt",
     [
-        (
+        pytest.param(
             PromptBuilder()
                 .system("You are a friendly assistant")
                 .context("a" * ((1_000 * 4) + 100)),
             "You are a friendly assistant",
+            id="simple_drop_large_context"
         ),
-        (
+        pytest.param(
             PromptBuilder()
                 .system("You are a friendly assistant")
                 .context("a" * ((1_000 * 4) + 100))
                 .context("a" * ((1_000 * 4) + 100)),
             "You are a friendly assistant",
+            id="drop_all_large_context"
         ),
-        (
+        pytest.param(
+            PromptBuilder()
+                .system("You are a friendly assistant")
+                .instructions("Please summarize the following")
+                .context("a" * ((1_000 * 4) + 100)),
+            """You are a friendly assistant
+Please summarize the following""",
+            id="drop_context_before_instructions"
+        ),
+        pytest.param(
             PromptBuilder(
                 max_tokens=20,
                 compactors=(TruncateCompactor(max_chars=5), DropSlotCompactor())
@@ -53,7 +66,8 @@ def test_basic(pb: PromptBuilder, expected_prompt: str):
             .context("a" * 40),
             """Yo...
 aa...
-aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"""
+aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa""",
+            id="truncate_all_before_drop"
         )
     ]
 )

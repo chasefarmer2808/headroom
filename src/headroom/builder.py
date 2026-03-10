@@ -92,6 +92,8 @@ class DropSlotCompactor:
             # delete other frags with the same value.
             slots[droppable_slot] = [f for f in frags if f is not sorted_droppable_frags[0]]
 
+            return slots
+
         return slots
 
     def can_compact(self, slots: PromptSlots) -> bool:
