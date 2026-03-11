@@ -54,7 +54,6 @@ class TruncateCompactor:
                     yield CompactionResult(slot_name, i, truncated_frag, "replace")
 
 
-# TODO rename to DropFragCompactor
 class DropFragCompactor:
     """
     Applies compaction by completely removing the lowest important fragment from the lowest important slot.
