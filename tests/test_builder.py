@@ -77,6 +77,14 @@ def test_basic(pb: PromptBuilder, expected_prompt: str):
         pytest.param(
             PromptBuilder()
                 .system("You are a friendly assistant")
+                .context("a" * ((1_000 * 2) + 100))
+                .context("a" * ((1_000 * 2) + 100)),
+            f"You are a friendly assistant\n{"a" * ((1_000 * 2) + 100)}",
+            id="drop_one_with_same_value"
+        ),
+        pytest.param(
+            PromptBuilder()
+                .system("You are a friendly assistant")
                 .context("a" * ((1_000 * 4) + 100))
                 .context("a" * ((1_000 * 4) + 100)),
             "You are a friendly assistant",
@@ -152,14 +160,3 @@ def test_char_estimate_over_budget():
 def test_disable_compaction_within_budget_does_not_raise():
     pb = PromptBuilder(disable_compaction=True).user("short")
     assert pb.build() == "short"
-
-def test_drop_compact_uses_identity_not_equality():
-    """Two fragments with identical value but different identity: only one removed."""
-    f1 = Fragment("dup", Importance.LOW)
-    f2 = Fragment("dup", Importance.LOW)
-    slots: PromptSlots = {
-        "system": [], "instructions": [], "context": [], "user": [],
-        "history": [f1, f2],
-    }
-    result = DropSlotCompactor().compact(slots)
-    assert len(result["history"]) == 1
