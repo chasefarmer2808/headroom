@@ -1,6 +1,6 @@
 import pytest
 
-from headroom.builder import DropSlotCompactor, Fragment, Importance, PromptBuilder, PromptSlots, TruncateCompactor
+from headroom.builder import DropFragCompactor, Fragment, Importance, PromptBuilder, PromptSlots, TruncateCompactor
 
 @pytest.mark.parametrize(
     "pb,expected_prompt",
@@ -100,7 +100,7 @@ Please summarize the following""",
             id="drop_context_before_instructions"
         ),
         pytest.param(
-            PromptBuilder(max_tokens=200, compactors=(TruncateCompactor(max_chars=100), DropSlotCompactor()))
+            PromptBuilder(max_tokens=200, compactors=(TruncateCompactor(max_chars=100), DropFragCompactor()))
                 .system("You are a friendly assistant")
                 .instructions("Summarize the following pages from the book:")
                 .context(f"Page 1: {("a" * 500)}")
@@ -114,7 +114,7 @@ Page 2: {("a" * 500)}""",
         pytest.param(
             PromptBuilder(
                 max_tokens=20,
-                compactors=(TruncateCompactor(max_chars=5), DropSlotCompactor())
+                compactors=(TruncateCompactor(max_chars=5), DropFragCompactor())
             )
             .system("You are a friendly assistant")
             .context("a" * 40)

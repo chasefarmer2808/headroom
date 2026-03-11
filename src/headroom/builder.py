@@ -55,7 +55,7 @@ class TruncateCompactor:
 
 
 # TODO rename to DropFragCompactor
-class DropSlotCompactor:
+class DropFragCompactor:
     """
     Applies compaction by completely removing the lowest important fragment from the lowest important slot.
     Intended to be used as a last resort when other compaction methods aren't viable or available.
@@ -75,7 +75,7 @@ class DropSlotCompactor:
                 yield CompactionResult(droppable_slot, frags.index(frag), frag, "delete")
 
 class PromptBuilder:
-    def __init__(self, max_tokens: int = 1_000, compactors: tuple[Compactor, ...] = (DropSlotCompactor(),), disable_compaction: bool = False):
+    def __init__(self, max_tokens: int = 1_000, compactors: tuple[Compactor, ...] = (DropFragCompactor(),), disable_compaction: bool = False):
         self._max_tokens = max_tokens
         self._token_counter: TokenCounter = CharEstimateCounter()
         self._compactors = compactors
