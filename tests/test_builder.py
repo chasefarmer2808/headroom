@@ -1,6 +1,6 @@
 import pytest
 
-from headroom.builder import DropSlotCompactor, Importance, PromptBuilder, TruncateCompactor
+from headroom.builder import DropSlotCompactor, Fragment, Importance, PromptBuilder, PromptSlots, TruncateCompactor
 
 @pytest.mark.parametrize(
     "pb,expected_prompt",
@@ -152,3 +152,14 @@ def test_char_estimate_over_budget():
 def test_disable_compaction_within_budget_does_not_raise():
     pb = PromptBuilder(disable_compaction=True).user("short")
     assert pb.build() == "short"
+
+def test_drop_compact_uses_identity_not_equality():
+    """Two fragments with identical value but different identity: only one removed."""
+    f1 = Fragment("dup", Importance.LOW)
+    f2 = Fragment("dup", Importance.LOW)
+    slots: PromptSlots = {
+        "system": [], "instructions": [], "context": [], "user": [],
+        "history": [f1, f2],
+    }
+    result = DropSlotCompactor().compact(slots)
+    assert len(result["history"]) == 1
