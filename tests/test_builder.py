@@ -115,7 +115,24 @@ Page 2: {("a" * 500)}""",
 aa...
 aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa""",
             id="truncate_all_before_drop"
-        )
+        ),
+        pytest.param(
+            PromptBuilder()
+                .system("You are a friendly assistant")
+                .history("a" * ((1_000 * 4) + 100))
+                .context("ctx"),
+            "You are a friendly assistant\nctx",
+            id="drop_history_before_context",
+        ),
+        pytest.param(
+            PromptBuilder()
+                .system("You are a friendly assistant")
+                .history("low hist", importance=Importance.LOW)
+                .history("crit hist", importance=Importance.CRITICAL)
+                .context("a" * ((1_000 * 4) + 100)),
+            "You are a friendly assistant\ncrit hist",
+            id="drop_lowest_importance_history_first",
+        ),
     ]
 )
 def test_compaction(pb: PromptBuilder, expected_prompt: str):
