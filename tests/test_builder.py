@@ -71,6 +71,11 @@ class TestStruct:
             "line1\nline2\nline3",
             id="multiline_fragment_preserved",
         ),
+        pytest.param(
+            PromptBuilder().context(TestStruct()),
+            "This is a very long sentence",
+            id="simple_promptable"
+        ),
     ]
 )
 def test_basic(pb: PromptBuilder, expected_prompt: str):
@@ -154,10 +159,10 @@ aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa""",
             id="drop_lowest_importance_history_first",
         ),
         pytest.param(
-            PromptBuilder(compactors=InlineCompactor())
+            PromptBuilder(max_tokens=6, compactors=(InlineCompactor(),))
                 .system("You are a friendly assistant")
                 .context(TestStruct()),
-            "You are a friendly assistant\nThisisaverylongsentance",
+            "You are a friendly assistant\nThisisaverylongsentence",
             id="simple_inline_compactor"
         )
     ]
