@@ -66,7 +66,12 @@ class DropFragCompactor:
         return "drop"
 
 class PromptBuilder:
-    def __init__(self, max_tokens: int = 1_000, compactors: tuple[Compactor, ...] = (DropFragCompactor(),), disable_compaction: bool = False):
+    def __init__(
+            self, 
+            max_tokens: int = 1_000, 
+            compactors: tuple[Compactor, ...] = (InlineCompactor(), TruncateCompactor(), DropFragCompactor(),), 
+            disable_compaction: bool = False
+        ):
         self._max_tokens = max_tokens
         self._token_counter: TokenCounter = CharEstimateCounter()
         self._compactors = compactors

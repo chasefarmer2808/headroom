@@ -85,14 +85,14 @@ def test_basic(pb: PromptBuilder, expected_prompt: str):
     "pb,expected_prompt",
     [
         pytest.param(
-            PromptBuilder()
+            PromptBuilder(compactors=(DropFragCompactor(),))
                 .system("You are a friendly assistant")
                 .context("a" * ((1_000 * 4) + 100)),
             "You are a friendly assistant",
             id="simple_drop_large_context"
         ),
         pytest.param(
-            PromptBuilder()
+            PromptBuilder(compactors=(DropFragCompactor(),))
                 .system("You are a friendly assistant")
                 .context("a" * ((1_000 * 2) + 100))
                 .context("a" * ((1_000 * 2) + 100)),
@@ -100,7 +100,7 @@ def test_basic(pb: PromptBuilder, expected_prompt: str):
             id="drop_one_with_same_value"
         ),
         pytest.param(
-            PromptBuilder()
+            PromptBuilder(compactors=(DropFragCompactor(),))
                 .system("You are a friendly assistant")
                 .context("a" * ((1_000 * 4) + 100))
                 .context("a" * ((1_000 * 4) + 100)),
@@ -108,7 +108,7 @@ def test_basic(pb: PromptBuilder, expected_prompt: str):
             id="drop_all_large_context"
         ),
         pytest.param(
-            PromptBuilder()
+            PromptBuilder(compactors=(DropFragCompactor(),))
                 .system("You are a friendly assistant")
                 .instructions("Please summarize the following")
                 .context("a" * ((1_000 * 4) + 100)),
@@ -142,7 +142,7 @@ aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa""",
             id="truncate_all_before_drop"
         ),
         pytest.param(
-            PromptBuilder()
+            PromptBuilder(compactors=(DropFragCompactor(),))
                 .system("You are a friendly assistant")
                 .history("a" * ((1_000 * 4) + 100))
                 .context("ctx"),
@@ -150,7 +150,7 @@ aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa""",
             id="drop_history_before_context",
         ),
         pytest.param(
-            PromptBuilder()
+            PromptBuilder(compactors=(DropFragCompactor(),))
                 .system("You are a friendly assistant")
                 .history("low hist", importance=Importance.LOW)
                 .history("crit hist", importance=Importance.CRITICAL)
