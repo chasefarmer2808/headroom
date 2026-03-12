@@ -119,7 +119,7 @@ Page 2: {("a" * 500)}""",
             .system("You are a friendly assistant")
             .context("a" * 40)
             .context("a" * 40),
-            """Yo...
+            """You are a friendly assistant
 aa...
 aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa""",
             id="truncate_all_before_drop"
