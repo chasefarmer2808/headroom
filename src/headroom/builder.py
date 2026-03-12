@@ -10,6 +10,11 @@ class Promptable(Protocol):
     def to_prompt(self) -> str:
         ...
 
+@runtime_checkable
+class Compactable(Protocol):
+    def compact(self) -> Promptable:
+        ...
+
 type _Promptable = Promptable | str
 
 class Importance(Enum):
@@ -47,6 +52,10 @@ class TruncateCompactor:
         if isinstance(fragment.content, str) and len(fragment.content) > self._max_chars:
             return Fragment(fragment.content[:self._max_chars - len("...")] + "...", fragment.importance)
 
+class InlineCompactor:
+    def apply(self, fragment: Fragment) -> Fragment | Literal["drop"] | None:
+        if isinstance(fragment.content, Compactable):
+            return Fragment(fragment.content.compact(), fragment.importance)
 
 class DropFragCompactor:
     """

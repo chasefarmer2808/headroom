@@ -1,6 +1,18 @@
+from __future__ import annotations
 import pytest
 
-from headroom.builder import DropFragCompactor, Fragment, Importance, PromptBuilder, PromptSlots, TruncateCompactor
+from headroom.builder import DropFragCompactor, Importance, InlineCompactor, PromptBuilder, TruncateCompactor
+
+class TestStruct:
+    def __init__(self):
+        self._message = "This is a very long sentence"
+
+    def to_prompt(self) -> str:
+        return self._message
+    
+    def compact(self) -> TestStruct:
+        self._message = self._message.replace(" ", "")
+        return self
 
 @pytest.mark.parametrize(
     "pb,expected_prompt",
@@ -141,6 +153,13 @@ aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa""",
             "You are a friendly assistant\ncrit hist",
             id="drop_lowest_importance_history_first",
         ),
+        pytest.param(
+            PromptBuilder(compactors=InlineCompactor())
+                .system("You are a friendly assistant")
+                .context(TestStruct()),
+            "You are a friendly assistant\nThisisaverylongsentance",
+            id="simple_inline_compactor"
+        )
     ]
 )
 def test_compaction(pb: PromptBuilder, expected_prompt: str):
