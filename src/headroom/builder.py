@@ -1,6 +1,8 @@
 from __future__ import annotations
 
+import copy
 from collections.abc import Generator
+from dataclasses import dataclass
 from enum import Enum, auto
 from typing import (
     Literal,
@@ -51,6 +53,29 @@ class PromptSlots(TypedDict):
     context: list[Fragment]
     history: list[Fragment]
     user: list[Fragment]
+
+
+@dataclass
+class CompactionEvent:
+    compactor_name: str
+    slot: str
+    fragment_type: str
+    tokens_before: int
+    tokens_after: int
+
+    @property
+    def tokens_saved(self) -> int:
+        return self.tokens_before - self.tokens_after
+
+
+@dataclass
+class BuildResult:
+    prompt: str
+    tokens_used: int
+    token_budget: int
+    compaction_events: tuple[CompactionEvent, ...]
+
+    # TODO add utilization and tokens_remaining properties
 
 
 class Compactor(Protocol):
@@ -134,12 +159,19 @@ class PromptBuilder:
         self._slots["user"].append(Fragment(p, importance))
         return self
 
-    def build(self) -> str:
-        # TODO deep copy slots
-        prompt_str = self._render(self._slots)
+    def build(self) -> BuildResult:
+        compaction_events: list[CompactionEvent] = []
+        slots = copy.deepcopy(self._slots)
+        prompt_str = self._render(slots)
+        curr_count = self._token_counter.count_tokens(prompt_str)
 
-        if self._token_counter.count_tokens(prompt_str) <= self._max_tokens:
-            return prompt_str
+        if curr_count <= self._max_tokens:
+            return BuildResult(
+                prompt_str,
+                curr_count,
+                self._max_tokens,
+                tuple(compaction_events),
+            )
 
         if self._disable_compaction:
             raise ValueError("Prompt exceeds max token budget")
@@ -147,18 +179,41 @@ class PromptBuilder:
         for compactor in self._compactors:
             for slot_name, i, compacted_frag, op in self._compact_next(compactor):
                 if op == "replace":
-                    self._slots[slot_name][i] = compacted_frag
+                    slots[slot_name][i] = compacted_frag
                 elif op == "delete":
-                    self._slots[slot_name].remove(compacted_frag)
+                    slots[slot_name].remove(compacted_frag)
 
-                prompt_str = self._render(self._slots)
+                prompt_str = self._render(slots)
+                count_after_compaction = self._token_counter.count_tokens(prompt_str)
 
-                if self._token_counter.count_tokens(prompt_str) <= self._max_tokens:
-                    return prompt_str
+                compaction_events.append(
+                    CompactionEvent(
+                        type(compactor),
+                        slot_name,
+                        type(compacted_frag.content),
+                        curr_count,
+                        count_after_compaction,
+                    )
+                )
+
+                if count_after_compaction <= self._max_tokens:
+                    return BuildResult(
+                        prompt_str,
+                        count_after_compaction,
+                        self._max_tokens,
+                        tuple(compaction_events),
+                    )
+
+                curr_count = count_after_compaction
 
         # TODO: what do I do when prompt_str is still out of budget?
 
-        return prompt_str
+        return BuildResult(
+            prompt_str,
+            count_after_compaction,
+            self._max_tokens,
+            tuple(compaction_events),
+        )
 
     def _compact_next(self, compactor: Compactor) -> Generator[CompactionResult]:
         for slot_name in self._slot_order:

@@ -84,7 +84,7 @@ class TestStruct:
     ],
 )
 def test_basic(pb: PromptBuilder, expected_prompt: str):
-    assert pb.build() == expected_prompt
+    assert pb.build().prompt == expected_prompt
 
 
 @pytest.mark.parametrize(
@@ -177,7 +177,7 @@ aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa""",
     ],
 )
 def test_compaction(pb: PromptBuilder, expected_prompt: str):
-    assert pb.build() == expected_prompt
+    assert pb.build().prompt == expected_prompt
 
 
 def test_custom_importance_overrides_default():
@@ -199,4 +199,13 @@ def test_char_estimate_over_budget():
 
 def test_disable_compaction_within_budget_does_not_raise():
     pb = PromptBuilder(disable_compaction=True).user("short")
-    assert pb.build() == "short"
+    assert pb.build().prompt == "short"
+
+
+def test_build_idempotency():
+    pb = (
+        PromptBuilder()
+        .system("You are a friendly assistant")
+        .context("a" * ((1_000 * 4) + 100))
+    )
+    assert pb.build() == pb.build()
