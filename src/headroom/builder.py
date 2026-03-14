@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import copy
+import logging
 from collections.abc import Generator
 from dataclasses import dataclass
 from enum import Enum, auto
@@ -13,6 +14,8 @@ from typing import (
 )
 
 from .counter import CharEstimateCounter, TokenCounter
+
+logger = logging.getLogger(__name__)
 
 
 @runtime_checkable
@@ -206,7 +209,13 @@ class PromptBuilder:
 
                 curr_count = count_after_compaction
 
-        # TODO: what do I do when prompt_str is still out of budget?
+        if count_after_compaction > self._max_tokens:
+            logger.warning(
+                "Prompt is still over budget after all compactions were exhausted. "
+                "Token count: %d, budget: %d.",
+                count_after_compaction,
+                self._max_tokens,
+            )
 
         return BuildResult(
             prompt_str,

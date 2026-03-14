@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+import logging
+
 import pytest
 
 from headroom.builder import (
@@ -209,3 +211,15 @@ def test_build_idempotency():
         .context("a" * ((1_000 * 4) + 100))
     )
     assert pb.build() == pb.build()
+
+
+def test_compaction_exhaustion(caplog):
+    pb = (
+        PromptBuilder(max_tokens=5)
+        .system("You are a friendly assistant")
+        .context(TestStruct())
+    )
+
+    with caplog.at_level(logging.WARNING, logger="headroom"):
+        pb.build()
+        assert "Prompt is still over budget"
