@@ -31,6 +31,11 @@ class Compactable(Protocol):
 type _Promptable = Promptable | str
 
 
+class ExhaustionPolicy(Enum):
+    WARN = auto()
+    RAISE = auto()
+
+
 class Importance(Enum):
     LOW = auto()
     NORMAL = auto()
@@ -128,6 +133,7 @@ class PromptBuilder:
             DropFragCompactor(),
         ),
         disable_compaction: bool = False,
+        exhaustion_policy: ExhaustionPolicy = ExhaustionPolicy.WARN,
     ):
         self._max_tokens = max_tokens
         self._token_counter: TokenCounter = CharEstimateCounter()
@@ -141,6 +147,7 @@ class PromptBuilder:
         }
         self._slot_order: tuple[str, ...] = ("history", "context", "instructions")
         self._disable_compaction = disable_compaction
+        self._exhaustion_policy = exhaustion_policy
 
     def system(self, p: _Promptable, importance=Importance.CRITICAL) -> PromptBuilder:
         self._slots["system"].append(Fragment(p, importance))
@@ -210,12 +217,17 @@ class PromptBuilder:
                 curr_count = count_after_compaction
 
         if count_after_compaction > self._max_tokens:
-            logger.warning(
-                "Prompt is still over budget after all compactions were exhausted. "
-                "Token count: %d, budget: %d.",
-                count_after_compaction,
-                self._max_tokens,
-            )
+            if self._exhaustion_policy == ExhaustionPolicy.WARN:
+                logger.warning(
+                    "Prompt is still over budget after all compactions were exhausted. "
+                    "Token count: %d, budget: %d.",
+                    count_after_compaction,
+                    self._max_tokens,
+                )
+            elif self._exhaustion_policy == ExhaustionPolicy.RAISE:
+                raise ValueError(
+                    "Prompt is still over budget after all compactions were exhausted."
+                )
 
         return BuildResult(
             prompt_str,

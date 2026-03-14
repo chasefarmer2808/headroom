@@ -6,6 +6,7 @@ import pytest
 
 from headroom.builder import (
     DropFragCompactor,
+    ExhaustionPolicy,
     Importance,
     InlineCompactor,
     PromptBuilder,
@@ -213,7 +214,7 @@ def test_build_idempotency():
     assert pb.build() == pb.build()
 
 
-def test_compaction_exhaustion(caplog):
+def test_exhaustion_policy_warning(caplog):
     pb = (
         PromptBuilder(max_tokens=5)
         .system("You are a friendly assistant")
@@ -222,4 +223,18 @@ def test_compaction_exhaustion(caplog):
 
     with caplog.at_level(logging.WARNING, logger="headroom"):
         pb.build()
-        assert "Prompt is still over budget"
+
+    assert "Prompt is still over budget" in caplog.text
+
+
+def test_exhaustion_policy_raise():
+    pb = (
+        PromptBuilder(max_tokens=5, exhaustion_policy=ExhaustionPolicy.RAISE)
+        .system("You are a friendly assistant")
+        .context(TestStruct())
+    )
+
+    with pytest.raises(ValueError) as excinfo:
+        pb.build()
+
+    assert "Prompt is still over budget" in str(excinfo.value)
