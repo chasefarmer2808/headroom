@@ -323,3 +323,8 @@ def test_max_tokens_overrides_model_context_window():
 def test_builder_raises_when_no_model_or_max_tokens_provided():
     with pytest.raises(ValueError):
         PromptBuilder().system("Hello")
+
+
+def test_builder_raises_for_unknown_model():
+    with pytest.raises(ValueError):
+        PromptBuilder(model_name="unknown").system("Hello")

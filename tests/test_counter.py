@@ -1,8 +1,12 @@
+from typing import get_args
+
 import pytest
 import tiktoken
 
 from headroom.counter import (
+    MODEL_REGISTRY,
     CharEstimateCounter,
+    ModelName,
     TikTokenCounter,
     TokenCounter,
     get_counter,
@@ -30,3 +34,8 @@ def test_get_counter(encoding: str, expected_counter: TokenCounter | None):
         )
     else:
         assert counter is None
+
+
+def test_all_model_names_have_registry_entries():
+    for name in get_args(ModelName):
+        assert name in MODEL_REGISTRY, f"Missing registry entry for {name!r}"
