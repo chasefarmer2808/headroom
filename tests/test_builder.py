@@ -12,6 +12,7 @@ from headroom.builder import (
     PromptBuilder,
     TruncateCompactor,
 )
+from headroom.counter import MODEL_REGISTRY
 
 
 class TestStruct:
@@ -238,3 +239,20 @@ def test_exhaustion_policy_raise():
         pb.build()
 
     assert "Prompt is still over budget" in str(excinfo.value)
+
+
+def test_max_tokens_default():
+    pb = PromptBuilder().system("You are a friendly assistant")
+    assert pb.build().token_budget == 1_000
+
+
+def test_max_tokens_safety_hatch():
+    pb = PromptBuilder(max_tokens=10).system("You are a friendly assistant")
+
+    assert pb.build().token_budget == 10
+
+
+def test_token_budget_follows_model_name():
+    pb = PromptBuilder(model_name="gpt-4o").system("You are a friendly assistant")
+
+    assert pb.build().token_budget == MODEL_REGISTRY["gpt-4o"].context_window

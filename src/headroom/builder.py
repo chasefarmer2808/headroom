@@ -13,7 +13,7 @@ from typing import (
     runtime_checkable,
 )
 
-from .counter import CharEstimateCounter, TokenCounter
+from .counter import MODEL_REGISTRY, CharEstimateCounter, TokenCounter
 
 logger = logging.getLogger(__name__)
 
@@ -126,7 +126,8 @@ class DropFragCompactor:
 class PromptBuilder:
     def __init__(
         self,
-        max_tokens: int = 1_000,
+        model_name: str | None = None,
+        max_tokens: int | None = None,
         compactors: tuple[Compactor, ...] = (
             InlineCompactor(),
             TruncateCompactor(),
@@ -135,7 +136,8 @@ class PromptBuilder:
         disable_compaction: bool = False,
         exhaustion_policy: ExhaustionPolicy = ExhaustionPolicy.WARN,
     ):
-        self._max_tokens = max_tokens
+        self._model_name = model_name
+        self._max_tokens = max_tokens or 1_000
         self._token_counter: TokenCounter = CharEstimateCounter()
         self._compactors = compactors
         self._slots: PromptSlots = {
@@ -148,6 +150,16 @@ class PromptBuilder:
         self._slot_order: tuple[str, ...] = ("history", "context", "instructions")
         self._disable_compaction = disable_compaction
         self._exhaustion_policy = exhaustion_policy
+
+        # Initialize the token budget based on model name or max tokens
+        if self._model_name:
+            # set max tokens for that model
+            model_spec = MODEL_REGISTRY.get(self._model_name)
+            if model_spec:
+                self._max_tokens = model_spec.context_window
+
+        if max_tokens:
+            self._max_tokens = max_tokens
 
     def system(self, p: _Promptable, importance=Importance.CRITICAL) -> PromptBuilder:
         self._slots["system"].append(Fragment(p, importance))
