@@ -13,7 +13,13 @@ from typing import (
     runtime_checkable,
 )
 
-from .counter import MODEL_REGISTRY, CharEstimateCounter, TokenCounter, get_counter
+from .counter import (
+    MODEL_REGISTRY,
+    CharEstimateCounter,
+    ModelName,
+    TokenCounter,
+    get_counter,
+)
 
 logger = logging.getLogger(__name__)
 
@@ -126,8 +132,7 @@ class DropFragCompactor:
 class PromptBuilder:
     def __init__(
         self,
-        model_name: str
-        | None = None,  # TODO should be type safe to the keys of the model registry.
+        model_name: ModelName | None = None,
         max_tokens: int | None = None,
         compactors: tuple[Compactor, ...] = (
             InlineCompactor(),
@@ -138,7 +143,7 @@ class PromptBuilder:
         exhaustion_policy: ExhaustionPolicy = ExhaustionPolicy.WARN,
     ):
         self._model_name = model_name
-        self._max_tokens = max_tokens or 1_000
+        self._max_tokens = max_tokens
         self._encoder: str | None = None
         self._token_counter: TokenCounter = CharEstimateCounter()
         self._compactors = compactors
@@ -152,6 +157,9 @@ class PromptBuilder:
         self._slot_order: tuple[str, ...] = ("history", "context", "instructions")
         self._disable_compaction = disable_compaction
         self._exhaustion_policy = exhaustion_policy
+
+        if not self._model_name and not self._max_tokens:
+            raise ValueError("must provide model name or max tokens")
 
         # Initialize the token budget based on model name or max tokens
         if self._model_name:

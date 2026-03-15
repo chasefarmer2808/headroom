@@ -1,4 +1,4 @@
-from typing import NamedTuple, Protocol
+from typing import Literal, NamedTuple, Protocol
 
 import tiktoken
 from tiktoken import Encoding
@@ -9,7 +9,11 @@ class ModelSpec(NamedTuple):
     encoder: str
 
 
-MODEL_REGISTRY: dict[str, ModelSpec] = {"gpt-4o": ModelSpec(128_000, "o200k_base")}
+ModelName = Literal["gpt-4o"]
+
+MODEL_REGISTRY: dict[ModelName, ModelSpec] = {
+    "gpt-4o": ModelSpec(128_000, "o200k_base")
+}
 
 
 class TokenCounter(Protocol):

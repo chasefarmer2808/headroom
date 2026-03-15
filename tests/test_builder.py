@@ -30,14 +30,14 @@ class TestStruct:
 @pytest.mark.parametrize(
     "pb,expected_prompt",
     [
-        pytest.param(PromptBuilder(), "", id="empty_builder"),
+        pytest.param(PromptBuilder(model_name="gpt-4o"), "", id="empty_builder"),
         pytest.param(
-            PromptBuilder().context("hello"),
+            PromptBuilder(model_name="gpt-4o").context("hello"),
             "hello",
             id="hello_context_only",
         ),
         pytest.param(
-            PromptBuilder()
+            PromptBuilder(model_name="gpt-4o")
             .system("1")
             .instructions("2")
             .context("3")
@@ -51,37 +51,40 @@ class TestStruct:
             id="section_ordering",
         ),
         pytest.param(
-            PromptBuilder().user("only user"),
+            PromptBuilder(model_name="gpt-4o").user("only user"),
             "only user",
             id="user_slot_only",
         ),
         pytest.param(
-            PromptBuilder().system("sys only"),
+            PromptBuilder(model_name="gpt-4o").system("sys only"),
             "sys only",
             id="system_slot_only",
         ),
         pytest.param(
-            PromptBuilder().context("first").context("second").context("third"),
+            PromptBuilder(model_name="gpt-4o")
+            .context("first")
+            .context("second")
+            .context("third"),
             "first\nsecond\nthird",
             id="multiple_fragments_same_slot",
         ),
         pytest.param(
-            PromptBuilder().system("sys").user("usr"),
+            PromptBuilder(model_name="gpt-4o").system("sys").user("usr"),
             "sys\nusr",
             id="system_and_user_no_middle_slots",
         ),
         pytest.param(
-            PromptBuilder().context("¡Hola! 日本語 🎉"),
+            PromptBuilder(model_name="gpt-4o").context("¡Hola! 日本語 🎉"),
             "¡Hola! 日本語 🎉",
             id="unicode_content_preserved",
         ),
         pytest.param(
-            PromptBuilder().context("line1\nline2\nline3"),
+            PromptBuilder(model_name="gpt-4o").context("line1\nline2\nline3"),
             "line1\nline2\nline3",
             id="multiline_fragment_preserved",
         ),
         pytest.param(
-            PromptBuilder().context(TestStruct()),
+            PromptBuilder(model_name="gpt-4o").context(TestStruct()),
             "This is a very long sentence",
             id="simple_promptable",
         ),
@@ -95,14 +98,14 @@ def test_basic(pb: PromptBuilder, expected_prompt: str):
     "pb,expected_prompt",
     [
         pytest.param(
-            PromptBuilder(compactors=(DropFragCompactor(),))
+            PromptBuilder(max_tokens=1_000, compactors=(DropFragCompactor(),))
             .system("You are a friendly assistant")
             .context("a" * ((1_000 * 4) + 100)),
             "You are a friendly assistant",
             id="simple_drop_large_context",
         ),
         pytest.param(
-            PromptBuilder(compactors=(DropFragCompactor(),))
+            PromptBuilder(max_tokens=1_000, compactors=(DropFragCompactor(),))
             .system("You are a friendly assistant")
             .context("a" * ((1_000 * 2) + 100))
             .context("a" * ((1_000 * 2) + 100)),
@@ -110,7 +113,7 @@ def test_basic(pb: PromptBuilder, expected_prompt: str):
             id="drop_one_with_same_value",
         ),
         pytest.param(
-            PromptBuilder(compactors=(DropFragCompactor(),))
+            PromptBuilder(max_tokens=1_000, compactors=(DropFragCompactor(),))
             .system("You are a friendly assistant")
             .context("a" * ((1_000 * 4) + 100))
             .context("a" * ((1_000 * 4) + 100)),
@@ -118,7 +121,7 @@ def test_basic(pb: PromptBuilder, expected_prompt: str):
             id="drop_all_large_context",
         ),
         pytest.param(
-            PromptBuilder(compactors=(DropFragCompactor(),))
+            PromptBuilder(max_tokens=1_000, compactors=(DropFragCompactor(),))
             .system("You are a friendly assistant")
             .instructions("Please summarize the following")
             .context("a" * ((1_000 * 4) + 100)),
@@ -155,7 +158,7 @@ aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa""",
             id="truncate_all_before_drop",
         ),
         pytest.param(
-            PromptBuilder(compactors=(DropFragCompactor(),))
+            PromptBuilder(max_tokens=1_000, compactors=(DropFragCompactor(),))
             .system("You are a friendly assistant")
             .history("a" * ((1_000 * 4) + 100))
             .context("ctx"),
@@ -163,7 +166,7 @@ aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa""",
             id="drop_history_before_context",
         ),
         pytest.param(
-            PromptBuilder(compactors=(DropFragCompactor(),))
+            PromptBuilder(max_tokens=1_000, compactors=(DropFragCompactor(),))
             .system("You are a friendly assistant")
             .history("low hist", importance=Importance.LOW)
             .history("crit hist", importance=Importance.CRITICAL)
@@ -192,7 +195,7 @@ def test_custom_importance_overrides_default():
 
 def test_char_estimate_over_budget():
     pb = (
-        PromptBuilder(disable_compaction=True)
+        PromptBuilder(max_tokens=1_000, disable_compaction=True)
         .system("You are a friendly assistant")
         .context("a" * ((1_000 * 4) + 100))
     )
@@ -202,13 +205,15 @@ def test_char_estimate_over_budget():
 
 
 def test_disable_compaction_within_budget_does_not_raise():
-    pb = PromptBuilder(disable_compaction=True).user("short")
+    pb = PromptBuilder(max_tokens=1_000, disable_compaction=True).user("short")
     assert pb.build().prompt == "short"
 
 
 def test_build_idempotency():
     pb = (
-        PromptBuilder()
+        PromptBuilder(
+            max_tokens=1_000,
+        )
         .system("You are a friendly assistant")
         .context("a" * ((1_000 * 4) + 100))
     )
@@ -241,11 +246,6 @@ def test_exhaustion_policy_raise():
     assert "Prompt is still over budget" in str(excinfo.value)
 
 
-def test_max_tokens_default():
-    pb = PromptBuilder().system("You are a friendly assistant")
-    assert pb.build().token_budget == 1_000
-
-
 def test_max_tokens_safety_hatch():
     pb = PromptBuilder(max_tokens=10).system("You are a friendly assistant")
 
@@ -261,8 +261,6 @@ def test_token_budget_follows_model_name():
 @pytest.mark.parametrize(
     "model_name,expected_encoder",
     [
-        (None, None),
-        ("unknown", None),
         ("gpt-4o", "o200k_base"),
     ],
 )
@@ -277,3 +275,8 @@ def test_max_tokens_overrides_model_context_window():
         "You are a friendly assistant."
     )
     assert pb.build().token_budget == 10
+
+
+def test_builder_raises_when_no_model_or_max_tokens_provided():
+    with pytest.raises(ValueError):
+        PromptBuilder().system("Hello")
