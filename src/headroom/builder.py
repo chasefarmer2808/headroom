@@ -219,7 +219,9 @@ class PromptBuilder:
             raise ValueError("Prompt exceeds max token budget")
         # Apply exhaustive sequential compaction
         for compactor in self._compactors:
-            for slot_name, i, compacted_frag, op in self._compact_next(compactor):
+            for slot_name, i, compacted_frag, op in self._compact_next(
+                compactor, slots
+            ):
                 if op == "replace":
                     slots[slot_name][i] = compacted_frag
                 elif op == "delete":
@@ -268,9 +270,11 @@ class PromptBuilder:
             tuple(compaction_events),
         )
 
-    def _compact_next(self, compactor: Compactor) -> Generator[CompactionResult]:
+    def _compact_next(
+        self, compactor: Compactor, slots: PromptSlots
+    ) -> Generator[CompactionResult]:
         for slot_name in self._slot_order:
-            frags = self._slots.get(slot_name, [])
+            frags = slots.get(slot_name, [])
             sorted_frags = sorted(
                 [
                     (i, f)
