@@ -162,18 +162,14 @@ class PromptBuilder:
             raise ValueError("must provide model name or max tokens")
 
         # Initialize the token budget based on model name or max tokens
-        if self._model_name:
+        if self._model_name and (model_spec := MODEL_REGISTRY.get(self._model_name)):
             # set max tokens for that model
-            model_spec = MODEL_REGISTRY.get(self._model_name)
-            if model_spec:
-                self._max_tokens = model_spec.context_window
-                self._encoder = model_spec.encoder
+            self._max_tokens = model_spec.context_window
+            self._encoder = model_spec.encoder
+            self._token_counter = get_counter(self._encoder)
 
         if max_tokens:
             self._max_tokens = max_tokens
-
-        if self._encoder:
-            self._token_counter = get_counter(self._encoder)
 
     def get_encoder(self) -> str | None:
         return self._encoder
