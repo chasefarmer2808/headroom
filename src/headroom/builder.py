@@ -126,7 +126,8 @@ class DropFragCompactor:
 class PromptBuilder:
     def __init__(
         self,
-        model_name: str | None = None,
+        model_name: str
+        | None = None,  # TODO should be type safe to the keys of the model registry.
         max_tokens: int | None = None,
         compactors: tuple[Compactor, ...] = (
             InlineCompactor(),

@@ -1,5 +1,8 @@
 from typing import NamedTuple, Protocol
 
+import tiktoken
+from tiktoken import Encoding
+
 
 class ModelSpec(NamedTuple):
     context_window: int
@@ -18,8 +21,17 @@ class CharEstimateCounter:
         return len(prompt) // 4
 
 
-def get_counter(model_name: str) -> TokenCounter:
-    spec = MODEL_REGISTRY.get(model_name)
+class TikTokenCounter:
+    def __init__(self, encoding: Encoding):
+        self._encoding = encoding
 
-    if not spec:
+    def count_tokens(self, prompt: str) -> int:
+        return len(self._encoding.encode(prompt))
+
+
+def get_counter(encoding_name: str) -> TokenCounter:
+    try:
+        encoding = tiktoken.get_encoding(encoding_name)
+        return TikTokenCounter(encoding)
+    except ValueError:
         return CharEstimateCounter()
