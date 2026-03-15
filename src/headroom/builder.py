@@ -53,6 +53,12 @@ class Fragment(NamedTuple):
     importance: Importance
 
 
+@dataclass
+class _SlotEntry:
+    fragment: Fragment
+    deleted: bool = False
+
+
 class CompactionResult(NamedTuple):
     slot_name: str
     index: int
@@ -61,11 +67,11 @@ class CompactionResult(NamedTuple):
 
 
 class PromptSlots(TypedDict):
-    system: list[Fragment]
-    instructions: list[Fragment]
-    context: list[Fragment]
-    history: list[Fragment]
-    user: list[Fragment]
+    system: list[_SlotEntry]
+    instructions: list[_SlotEntry]
+    context: list[_SlotEntry]
+    history: list[_SlotEntry]
+    user: list[_SlotEntry]
 
 
 @dataclass
@@ -181,23 +187,23 @@ class PromptBuilder:
         return self._encoder
 
     def system(self, p: _Promptable, importance=Importance.CRITICAL) -> PromptBuilder:
-        self._slots["system"].append(Fragment(p, importance))
+        self._slots["system"].append(_SlotEntry(Fragment(p, importance)))
         return self
 
     def instructions(self, p: _Promptable, importance=Importance.HIGH) -> PromptBuilder:
-        self._slots["instructions"].append(Fragment(p, importance))
+        self._slots["instructions"].append(_SlotEntry(Fragment(p, importance)))
         return self
 
     def context(self, p: _Promptable, importance=Importance.NORMAL) -> PromptBuilder:
-        self._slots["context"].append(Fragment(p, importance))
+        self._slots["context"].append(_SlotEntry(Fragment(p, importance)))
         return self
 
     def history(self, p: _Promptable, importance=Importance.LOW) -> PromptBuilder:
-        self._slots["history"].append(Fragment(p, importance))
+        self._slots["history"].append(_SlotEntry(Fragment(p, importance)))
         return self
 
     def user(self, p: _Promptable, importance=Importance.CRITICAL) -> PromptBuilder:
-        self._slots["user"].append(Fragment(p, importance))
+        self._slots["user"].append(_SlotEntry(Fragment(p, importance)))
         return self
 
     def build(self) -> BuildResult:
@@ -223,9 +229,9 @@ class PromptBuilder:
                 compactor, slots
             ):
                 if op == "replace":
-                    slots[slot_name][i] = compacted_frag
+                    slots[slot_name][i] = _SlotEntry(compacted_frag)
                 elif op == "delete":
-                    slots[slot_name].remove(compacted_frag)
+                    slots[slot_name][i].deleted = True
 
                 prompt_str = self._render(slots)
                 count_after_compaction = self._token_counter.count_tokens(prompt_str)
@@ -274,29 +280,32 @@ class PromptBuilder:
         self, compactor: Compactor, slots: PromptSlots
     ) -> Generator[CompactionResult]:
         for slot_name in self._slot_order:
-            frags = slots.get(slot_name, [])
-            sorted_frags = sorted(
+            entries = slots.get(slot_name, [])
+            sorted_entries = sorted(
                 [
-                    (i, f)
-                    for i, f in enumerate(frags)
-                    if f.importance != Importance.CRITICAL
+                    (i, e)
+                    for i, e in enumerate(entries)
+                    if e.fragment.importance != Importance.CRITICAL
                 ],
-                key=lambda pair: pair[1].importance.value,
+                key=lambda pair: pair[1].fragment.importance.value,
             )
-            for i, frag in sorted_frags:
-                result = compactor.apply(frag)
+            for i, entry in sorted_entries:
+                result = compactor.apply(entry.fragment)
                 if result is None:
                     continue
                 elif result == "drop":
-                    yield CompactionResult(slot_name, i, frag, "delete")
+                    yield CompactionResult(slot_name, i, entry.fragment, "delete")
                 else:
                     yield CompactionResult(slot_name, i, result, "replace")
 
     def _render(self, slots: PromptSlots) -> str:
         return "\n".join(
-            f.content.to_prompt() if isinstance(f.content, Promptable) else f.content
+            e.fragment.content.to_prompt()
+            if isinstance(e.fragment.content, Promptable)
+            else e.fragment.content
             for slot in slots.values()
-            for f in slot
+            for e in slot
+            if not e.deleted
         )
 
 

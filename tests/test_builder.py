@@ -222,6 +222,19 @@ aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa""",
             [(InlineCompactor, TestStruct)],
             id="simple_inline_compactor",
         ),
+        pytest.param(
+            PromptBuilder(
+                max_tokens=4,
+                token_counter=CharEstimateCounter(),
+                compactors=(DropFragCompactor(),),
+            )
+            .context("keep this", importance=Importance.CRITICAL)
+            .context("drop this", importance=Importance.HIGH)
+            .context("drop this", importance=Importance.LOW),
+            "keep this\ndrop this",
+            [(DropFragCompactor, str)],
+            id="drop_removes_correct_frag_when_dup_exists",
+        ),
     ],
 )
 def test_compaction(
@@ -244,7 +257,7 @@ def test_compaction(
 def test_custom_importance_overrides_default():
     pb = PromptBuilder(max_tokens=100_000, token_counter=CharEstimateCounter())
     pb.history("important history", importance=Importance.HIGH)
-    assert pb._slots["history"][0].importance == Importance.HIGH
+    assert pb._slots["history"][0].fragment.importance == Importance.HIGH
 
 
 def test_char_estimate_over_budget():
