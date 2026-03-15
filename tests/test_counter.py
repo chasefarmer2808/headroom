@@ -24,4 +24,6 @@ def test_get_counter(encoding: str, expected_counter: TokenCounter):
     test_prompt = "this is a test prompt"
     counter = get_counter(encoding)
     assert type(counter) is type(expected_counter)
-    assert counter.count_tokens(test_prompt) == counter.count_tokens(test_prompt)
+    assert counter.count_tokens(test_prompt) == expected_counter.count_tokens(
+        test_prompt
+    )
