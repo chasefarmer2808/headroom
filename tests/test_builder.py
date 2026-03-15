@@ -352,3 +352,22 @@ def test_builder_raises_when_no_model_or_max_tokens_provided():
 def test_builder_raises_for_unknown_model():
     with pytest.raises(ValueError):
         PromptBuilder(model_name="unknown").system("Hello")
+
+
+def test_build_does_not_raise_when_compactors_yield_nothing():
+    class NoOpCompactor:
+        def apply(self, _):
+            return None
+
+    pb = (
+        PromptBuilder(
+            max_tokens=1,
+            token_counter=CharEstimateCounter(),
+            compactors=(NoOpCompactor(),),
+        )
+        .system("You are a friendly assistant")
+        .context("some context")
+    )
+
+    result = pb.build()
+    assert result.tokens_used > result.token_budget

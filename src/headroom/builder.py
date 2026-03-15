@@ -205,6 +205,7 @@ class PromptBuilder:
         slots = copy.deepcopy(self._slots)
         prompt_str = self._render(slots)
         curr_count = self._token_counter.count_tokens(prompt_str)
+        count_after_compaction = curr_count
 
         if curr_count <= self._max_tokens:
             return BuildResult(
