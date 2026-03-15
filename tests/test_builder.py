@@ -270,3 +270,10 @@ def test_encoding(model_name: str | None, expected_encoder: str):
     pb = PromptBuilder(model_name=model_name).system("You are a friendly assistant.")
 
     assert pb.get_encoder() == expected_encoder
+
+
+def test_max_tokens_overrides_model_context_window():
+    pb = PromptBuilder(model_name="gpt-4o", max_tokens=10).system(
+        "You are a friendly assistant."
+    )
+    assert pb.build().token_budget == 10
