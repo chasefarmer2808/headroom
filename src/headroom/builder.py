@@ -229,9 +229,9 @@ class PromptBuilder:
 
                 compaction_events.append(
                     CompactionEvent(
-                        type(compactor),
+                        type(compactor).__name__,
                         slot_name,
-                        type(compacted_frag.content),
+                        type(compacted_frag.content).__name__,
                         curr_count,
                         count_after_compaction,
                     )

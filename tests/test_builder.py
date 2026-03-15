@@ -5,10 +5,12 @@ import logging
 import pytest
 
 from headroom.builder import (
+    Compactor,
     DropFragCompactor,
     ExhaustionPolicy,
     Importance,
     InlineCompactor,
+    Promptable,
     PromptBuilder,
     TruncateCompactor,
 )
@@ -95,7 +97,7 @@ def test_basic(pb: PromptBuilder, expected_prompt: str):
 
 
 @pytest.mark.parametrize(
-    "pb,expected_prompt",
+    "pb,expected_prompt,expected_compactions",
     [
         pytest.param(
             PromptBuilder(
@@ -106,6 +108,7 @@ def test_basic(pb: PromptBuilder, expected_prompt: str):
             .system("You are a friendly assistant")
             .context("a" * ((1_000 * 4) + 100)),
             "You are a friendly assistant",
+            [(DropFragCompactor, str)],
             id="simple_drop_large_context",
         ),
         pytest.param(
@@ -118,6 +121,7 @@ def test_basic(pb: PromptBuilder, expected_prompt: str):
             .context("a" * ((1_000 * 2) + 100))
             .context("a" * ((1_000 * 2) + 100)),
             f"You are a friendly assistant\n{'a' * ((1_000 * 2) + 100)}",
+            [(DropFragCompactor, str)],
             id="drop_one_with_same_value",
         ),
         pytest.param(
@@ -130,6 +134,7 @@ def test_basic(pb: PromptBuilder, expected_prompt: str):
             .context("a" * ((1_000 * 4) + 100))
             .context("a" * ((1_000 * 4) + 100)),
             "You are a friendly assistant",
+            [(DropFragCompactor, str), (DropFragCompactor, str)],
             id="drop_all_large_context",
         ),
         pytest.param(
@@ -143,6 +148,7 @@ def test_basic(pb: PromptBuilder, expected_prompt: str):
             .context("a" * ((1_000 * 4) + 100)),
             """You are a friendly assistant
 Please summarize the following""",
+            [(DropFragCompactor, str)],
             id="drop_context_before_instructions",
         ),
         pytest.param(
@@ -159,6 +165,7 @@ Please summarize the following""",
 Summarize the following pages from the book:
 Page 1: {("a" * 89)}...
 Page 2: {("a" * 500)}""",
+            [(TruncateCompactor, str)],
             id="truncate_first_context",
         ),
         pytest.param(
@@ -173,6 +180,7 @@ Page 2: {("a" * 500)}""",
             """You are a friendly assistant
 aa...
 aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa""",
+            [(TruncateCompactor, str)],
             id="truncate_all_before_drop",
         ),
         pytest.param(
@@ -185,6 +193,7 @@ aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa""",
             .history("a" * ((1_000 * 4) + 100))
             .context("ctx"),
             "You are a friendly assistant\nctx",
+            [(DropFragCompactor, str)],
             id="drop_history_before_context",
         ),
         pytest.param(
@@ -198,6 +207,7 @@ aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa""",
             .history("crit hist", importance=Importance.CRITICAL)
             .context("a" * ((1_000 * 4) + 100)),
             "You are a friendly assistant\ncrit hist",
+            [(DropFragCompactor, str), (DropFragCompactor, str)],
             id="drop_lowest_importance_history_first",
         ),
         pytest.param(
@@ -209,12 +219,26 @@ aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa""",
             .system("You are a friendly assistant")
             .context(TestStruct()),
             "You are a friendly assistant\nThisisaverylongsentence",
+            [(InlineCompactor, TestStruct)],
             id="simple_inline_compactor",
         ),
     ],
 )
-def test_compaction(pb: PromptBuilder, expected_prompt: str):
-    assert pb.build().prompt == expected_prompt
+def test_compaction(
+    pb: PromptBuilder,
+    expected_prompt: str,
+    expected_compactions: list[tuple[type[Compactor], type[Promptable] | str]],
+):
+    result = pb.build()
+    compactions = [
+        (event.compactor_name, event.fragment_type)
+        for event in result.compaction_events
+    ]
+    expected_compactions_stringified = [
+        tuple(t.__name__ for t in pair) for pair in expected_compactions
+    ]
+    assert result.prompt == expected_prompt
+    assert compactions == expected_compactions_stringified
 
 
 def test_custom_importance_overrides_default():
