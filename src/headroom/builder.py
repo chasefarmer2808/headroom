@@ -15,7 +15,6 @@ from typing import (
 
 from .counter import (
     MODEL_REGISTRY,
-    CharEstimateCounter,
     ModelName,
     TokenCounter,
     get_counter,
@@ -134,6 +133,7 @@ class PromptBuilder:
         self,
         model_name: ModelName | None = None,
         max_tokens: int | None = None,
+        token_counter: TokenCounter | None = None,
         compactors: tuple[Compactor, ...] = (
             InlineCompactor(),
             TruncateCompactor(),
@@ -144,8 +144,8 @@ class PromptBuilder:
     ):
         self._model_name = model_name
         self._max_tokens = max_tokens
+        self._token_counter = token_counter
         self._encoder: str | None = None
-        self._token_counter: TokenCounter = CharEstimateCounter()
         self._compactors = compactors
         self._slots: PromptSlots = {
             "system": [],
@@ -170,6 +170,12 @@ class PromptBuilder:
 
         if max_tokens:
             self._max_tokens = max_tokens
+
+        if token_counter:
+            self._token_counter = token_counter
+
+        if not self._token_counter:
+            raise ValueError("unable to resolve a token counter")
 
     def get_encoder(self) -> str | None:
         return self._encoder

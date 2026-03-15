@@ -12,7 +12,7 @@ from headroom.builder import (
     PromptBuilder,
     TruncateCompactor,
 )
-from headroom.counter import MODEL_REGISTRY
+from headroom.counter import MODEL_REGISTRY, CharEstimateCounter
 
 
 class TestStruct:
@@ -98,14 +98,22 @@ def test_basic(pb: PromptBuilder, expected_prompt: str):
     "pb,expected_prompt",
     [
         pytest.param(
-            PromptBuilder(max_tokens=1_000, compactors=(DropFragCompactor(),))
+            PromptBuilder(
+                max_tokens=1_000,
+                token_counter=CharEstimateCounter(),
+                compactors=(DropFragCompactor(),),
+            )
             .system("You are a friendly assistant")
             .context("a" * ((1_000 * 4) + 100)),
             "You are a friendly assistant",
             id="simple_drop_large_context",
         ),
         pytest.param(
-            PromptBuilder(max_tokens=1_000, compactors=(DropFragCompactor(),))
+            PromptBuilder(
+                max_tokens=1_000,
+                token_counter=CharEstimateCounter(),
+                compactors=(DropFragCompactor(),),
+            )
             .system("You are a friendly assistant")
             .context("a" * ((1_000 * 2) + 100))
             .context("a" * ((1_000 * 2) + 100)),
@@ -113,7 +121,11 @@ def test_basic(pb: PromptBuilder, expected_prompt: str):
             id="drop_one_with_same_value",
         ),
         pytest.param(
-            PromptBuilder(max_tokens=1_000, compactors=(DropFragCompactor(),))
+            PromptBuilder(
+                max_tokens=1_000,
+                token_counter=CharEstimateCounter(),
+                compactors=(DropFragCompactor(),),
+            )
             .system("You are a friendly assistant")
             .context("a" * ((1_000 * 4) + 100))
             .context("a" * ((1_000 * 4) + 100)),
@@ -121,7 +133,11 @@ def test_basic(pb: PromptBuilder, expected_prompt: str):
             id="drop_all_large_context",
         ),
         pytest.param(
-            PromptBuilder(max_tokens=1_000, compactors=(DropFragCompactor(),))
+            PromptBuilder(
+                max_tokens=1_000,
+                token_counter=CharEstimateCounter(),
+                compactors=(DropFragCompactor(),),
+            )
             .system("You are a friendly assistant")
             .instructions("Please summarize the following")
             .context("a" * ((1_000 * 4) + 100)),
@@ -132,6 +148,7 @@ Please summarize the following""",
         pytest.param(
             PromptBuilder(
                 max_tokens=200,
+                token_counter=CharEstimateCounter(),
                 compactors=(TruncateCompactor(max_chars=100), DropFragCompactor()),
             )
             .system("You are a friendly assistant")
@@ -147,6 +164,7 @@ Page 2: {("a" * 500)}""",
         pytest.param(
             PromptBuilder(
                 max_tokens=20,
+                token_counter=CharEstimateCounter(),
                 compactors=(TruncateCompactor(max_chars=5), DropFragCompactor()),
             )
             .system("You are a friendly assistant")
@@ -158,7 +176,11 @@ aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa""",
             id="truncate_all_before_drop",
         ),
         pytest.param(
-            PromptBuilder(max_tokens=1_000, compactors=(DropFragCompactor(),))
+            PromptBuilder(
+                max_tokens=1_000,
+                token_counter=CharEstimateCounter(),
+                compactors=(DropFragCompactor(),),
+            )
             .system("You are a friendly assistant")
             .history("a" * ((1_000 * 4) + 100))
             .context("ctx"),
@@ -166,7 +188,11 @@ aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa""",
             id="drop_history_before_context",
         ),
         pytest.param(
-            PromptBuilder(max_tokens=1_000, compactors=(DropFragCompactor(),))
+            PromptBuilder(
+                max_tokens=1_000,
+                token_counter=CharEstimateCounter(),
+                compactors=(DropFragCompactor(),),
+            )
             .system("You are a friendly assistant")
             .history("low hist", importance=Importance.LOW)
             .history("crit hist", importance=Importance.CRITICAL)
@@ -175,7 +201,11 @@ aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa""",
             id="drop_lowest_importance_history_first",
         ),
         pytest.param(
-            PromptBuilder(max_tokens=6, compactors=(InlineCompactor(),))
+            PromptBuilder(
+                max_tokens=6,
+                token_counter=CharEstimateCounter(),
+                compactors=(InlineCompactor(),),
+            )
             .system("You are a friendly assistant")
             .context(TestStruct()),
             "You are a friendly assistant\nThisisaverylongsentence",
@@ -188,14 +218,18 @@ def test_compaction(pb: PromptBuilder, expected_prompt: str):
 
 
 def test_custom_importance_overrides_default():
-    pb = PromptBuilder(max_tokens=100_000)
+    pb = PromptBuilder(max_tokens=100_000, token_counter=CharEstimateCounter())
     pb.history("important history", importance=Importance.HIGH)
     assert pb._slots["history"][0].importance == Importance.HIGH
 
 
 def test_char_estimate_over_budget():
     pb = (
-        PromptBuilder(max_tokens=1_000, disable_compaction=True)
+        PromptBuilder(
+            max_tokens=1_000,
+            token_counter=CharEstimateCounter(),
+            disable_compaction=True,
+        )
         .system("You are a friendly assistant")
         .context("a" * ((1_000 * 4) + 100))
     )
@@ -205,7 +239,9 @@ def test_char_estimate_over_budget():
 
 
 def test_disable_compaction_within_budget_does_not_raise():
-    pb = PromptBuilder(max_tokens=1_000, disable_compaction=True).user("short")
+    pb = PromptBuilder(
+        max_tokens=1_000, token_counter=CharEstimateCounter(), disable_compaction=True
+    ).user("short")
     assert pb.build().prompt == "short"
 
 
@@ -213,6 +249,7 @@ def test_build_idempotency():
     pb = (
         PromptBuilder(
             max_tokens=1_000,
+            token_counter=CharEstimateCounter(),
         )
         .system("You are a friendly assistant")
         .context("a" * ((1_000 * 4) + 100))
@@ -222,7 +259,7 @@ def test_build_idempotency():
 
 def test_exhaustion_policy_warning(caplog):
     pb = (
-        PromptBuilder(max_tokens=5)
+        PromptBuilder(max_tokens=5, token_counter=CharEstimateCounter())
         .system("You are a friendly assistant")
         .context(TestStruct())
     )
@@ -235,7 +272,11 @@ def test_exhaustion_policy_warning(caplog):
 
 def test_exhaustion_policy_raise():
     pb = (
-        PromptBuilder(max_tokens=5, exhaustion_policy=ExhaustionPolicy.RAISE)
+        PromptBuilder(
+            max_tokens=5,
+            token_counter=CharEstimateCounter(),
+            exhaustion_policy=ExhaustionPolicy.RAISE,
+        )
         .system("You are a friendly assistant")
         .context(TestStruct())
     )
@@ -247,7 +288,9 @@ def test_exhaustion_policy_raise():
 
 
 def test_max_tokens_safety_hatch():
-    pb = PromptBuilder(max_tokens=10).system("You are a friendly assistant")
+    pb = PromptBuilder(max_tokens=10, token_counter=CharEstimateCounter()).system(
+        "You are a friendly assistant"
+    )
 
     assert pb.build().token_budget == 10
 

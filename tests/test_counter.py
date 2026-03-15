@@ -16,14 +16,17 @@ def test_char_estimate_known_str():
 @pytest.mark.parametrize(
     "encoding,expected_counter",
     [
-        ("unknown", CharEstimateCounter()),
+        ("unknown", None),
         ("o200k_base", TikTokenCounter(tiktoken.get_encoding("o200k_base"))),
     ],
 )
-def test_get_counter(encoding: str, expected_counter: TokenCounter):
+def test_get_counter(encoding: str, expected_counter: TokenCounter | None):
     test_prompt = "this is a test prompt"
     counter = get_counter(encoding)
     assert type(counter) is type(expected_counter)
-    assert counter.count_tokens(test_prompt) == expected_counter.count_tokens(
-        test_prompt
-    )
+    if expected_counter:
+        assert counter.count_tokens(test_prompt) == expected_counter.count_tokens(
+            test_prompt
+        )
+    else:
+        assert counter is None

@@ -33,9 +33,9 @@ class TikTokenCounter:
         return len(self._encoding.encode(prompt))
 
 
-def get_counter(encoding_name: str) -> TokenCounter:
+def get_counter(encoding_name: str) -> TokenCounter | None:
     try:
         encoding = tiktoken.get_encoding(encoding_name)
         return TikTokenCounter(encoding)
     except ValueError:
-        return CharEstimateCounter()
+        return None
