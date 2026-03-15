@@ -256,3 +256,17 @@ def test_token_budget_follows_model_name():
     pb = PromptBuilder(model_name="gpt-4o").system("You are a friendly assistant")
 
     assert pb.build().token_budget == MODEL_REGISTRY["gpt-4o"].context_window
+
+
+@pytest.mark.parametrize(
+    "model_name,expected_encoder",
+    [
+        (None, None),
+        ("unknown", None),
+        ("gpt-4o", "o200k_base"),
+    ],
+)
+def test_encoding(model_name: str | None, expected_encoder: str):
+    pb = PromptBuilder(model_name=model_name).system("You are a friendly assistant.")
+
+    assert pb.get_encoder() == expected_encoder

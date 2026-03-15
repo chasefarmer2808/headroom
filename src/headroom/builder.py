@@ -13,7 +13,7 @@ from typing import (
     runtime_checkable,
 )
 
-from .counter import MODEL_REGISTRY, CharEstimateCounter, TokenCounter
+from .counter import MODEL_REGISTRY, CharEstimateCounter, TokenCounter, get_counter
 
 logger = logging.getLogger(__name__)
 
@@ -139,6 +139,7 @@ class PromptBuilder:
     ):
         self._model_name = model_name
         self._max_tokens = max_tokens or 1_000
+        self._encoder: str | None = None
         self._token_counter: TokenCounter = CharEstimateCounter()
         self._compactors = compactors
         self._slots: PromptSlots = {
@@ -158,9 +159,16 @@ class PromptBuilder:
             model_spec = MODEL_REGISTRY.get(self._model_name)
             if model_spec:
                 self._max_tokens = model_spec.context_window
+                self._encoder = model_spec.encoder
 
         if max_tokens:
             self._max_tokens = max_tokens
+
+        if self._encoder:
+            self._token_counter = get_counter(self._encoder)
+
+    def get_encoder(self) -> str | None:
+        return self._encoder
 
     def system(self, p: _Promptable, importance=Importance.CRITICAL) -> PromptBuilder:
         self._slots["system"].append(Fragment(p, importance))
