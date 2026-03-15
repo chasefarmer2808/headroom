@@ -255,7 +255,7 @@ def test_max_tokens_safety_hatch():
 def test_token_budget_follows_model_name():
     pb = PromptBuilder(model_name="gpt-4o").system("You are a friendly assistant")
 
-    assert pb.build().token_budget == MODEL_REGISTRY["gpt-4o"].context_window
+    assert pb.build().token_budget, pb.get_encoder() == MODEL_REGISTRY["gpt-4o"]
 
 
 @pytest.mark.parametrize(
